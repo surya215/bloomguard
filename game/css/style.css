@@ -1,0 +1,25 @@
+/* Bloomguard page: a dark frame around the canvas, nothing else to load. */
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; background: #0b1020; }
+body {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+.stage { text-align: center; padding: 12px; }
+#game {
+  display: block;
+  width: min(1280px, 96vw);
+  height: auto;
+  border-radius: 12px;
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.6);
+  background: #1d2b4f;
+  cursor: pointer;
+}
+.help {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 14px;
+  margin: 10px 0 0;
+}
