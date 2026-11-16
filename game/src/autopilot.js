@@ -9,7 +9,6 @@ import { GRID, PLANTS } from './config.js';
 import { SCREEN_TITLE, SCREEN_PLAY, SCREEN_WON, SCREEN_LOST, resetWorld, startRun, plantAt, callWaveEarly, stepWorld } from './world.js';
 
 const STEP = 1 / 30;
-const PLAY_SECONDS = 48;
 const LIMIT_SECONDS = 900;
 
 function countPlants(world, kind) {
@@ -37,6 +36,40 @@ function firstFreeTile(world, cols) {
   return null;
 }
 
+function leftmostEnemyX(world, row) {
+  let x = Infinity;
+  for (const e of world.enemies) if (e.row === row && e.x < x) x = e.x;
+  return x;
+}
+
+/**
+ * Plant a Thornshot in `row` where it can actually shoot: left of the row's
+ * leftmost blight (thorns fly right, so a shooter planted ahead of an enemy
+ * that already walked past it can never hit it). Returns true when planted.
+ */
+function plantShooter(world, row) {
+  const front = leftmostEnemyX(world, row);
+  const cols = [2, 3, 4, 5, 6, 7, 1];
+  let best = null;
+  for (const c of cols) {
+    if (world.plants[row][c]) continue;
+    const cx = GRID.x0 + c * GRID.tileW + GRID.tileW / 2;
+    if (front !== Infinity && cx > front - 20) continue;
+    if (best === null || cx > best.cx) best = { col: c, cx };
+  }
+  if (!best && front === Infinity) {
+    for (const c of cols) {
+      if (!world.plants[row][c]) {
+        best = { col: c, cx: 0 };
+        break;
+      }
+    }
+  }
+  if (!best) return false;
+  const result = plantAt(world, row, best.col, 'thornshot');
+  return result !== null && result !== 'poor';
+}
+
 /** One autopilot decision per tick: plant where it helps most, else wait. */
 function autopilot(world, purse) {
   if (world.screen !== SCREEN_PLAY) return;
@@ -59,13 +92,7 @@ function autopilot(world, purse) {
           bestRow = r;
         }
       }
-      const cols = [2, 3, 4, 5, 6, 7];
-      for (const c of cols) {
-        if (!world.plants[bestRow][c]) {
-          plantAt(world, bestRow, c, 'thornshot');
-          return;
-        }
-      }
+      if (plantShooter(world, bestRow)) return;
     }
     if (world.sun >= PLANTS.frostbell.cost) {
       for (let r = 0; r < GRID.rows; r += 1) {
@@ -98,15 +125,23 @@ function autopilot(world, purse) {
           bestRow = r;
         }
       }
-      for (const c of [2, 3, 4]) {
-        if (!world.plants[bestRow][c]) {
-          plantAt(world, bestRow, c, 'thornshot');
-          return;
+      if (plantShooter(world, bestRow)) return;
+    }
+    // A crowded row earns a chill.
+    if (world.sun >= PLANTS.frostbell.cost) {
+      for (let r = 0; r < GRID.rows; r += 1) {
+        if (enemiesInRow(world, r) >= 3) {
+          for (const c of [5, 6, 4]) {
+            if (!world.plants[r][c]) {
+              plantAt(world, r, c, 'frostbell');
+              return;
+            }
+          }
         }
       }
     }
   }
-  if (world.phase === 'build' && world.buildTimer <= 2 && (purse === 'rich' || countPlants(world, 'thornshot') >= 3)) {
+  if (world.phase === 'build' && world.buildTimer <= 2 && (purse === 'rich' || countPlants(world, 'thornshot') >= 2)) {
     callWaveEarly(world);
   }
 }
@@ -125,7 +160,18 @@ export function stageShot(name, world) {
   }
   startRun(world);
   if (name === 'win') world.sun = 600;
-  const seconds = name === 'play' ? PLAY_SECONDS : LIMIT_SECONDS;
+  if (name === 'play') {
+    // Stop mid-combat: wave 2 underway with blight on the field, so the frame
+    // shows the fight, not the calm between waves.
+    for (let i = 0; i < 240 / STEP; i += 1) {
+      if (world.screen !== SCREEN_PLAY) break;
+      autopilot(world, 'modest');
+      stepWorld(world, STEP);
+      if (world.wave >= 2 && world.phase === 'wave' && world.enemies.length >= 3) break;
+    }
+    return { screen: SCREEN_PLAY, best: world.score };
+  }
+  const seconds = LIMIT_SECONDS;
   const purse = name === 'win' ? 'rich' : 'modest';
   for (let i = 0; i < seconds / STEP; i += 1) {
     if (world.screen !== SCREEN_PLAY) break;

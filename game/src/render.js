@@ -6,7 +6,6 @@ import { SCREEN_TITLE, SCREEN_PLAY, SCREEN_PAUSE, SCREEN_WON, SCREEN_LOST, tileC
 
 const SKY_TOP = '#1d2b4f';
 const SKY_BOTTOM = '#4a3a6b';
-const MOON = { x: 1130, y: 70, r: 34 };
 
 function roundRect(ctx, x, y, w, h, r) {
   ctx.beginPath();
@@ -25,21 +24,6 @@ function drawSky(ctx, world) {
   g.addColorStop(1, '#2c2a44');
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, CANVAS.width, CANVAS.height);
-  // Moon with a soft halo.
-  const halo = ctx.createRadialGradient(MOON.x, MOON.y, 4, MOON.x, MOON.y, 90);
-  halo.addColorStop(0, 'rgba(255, 244, 200, 0.5)');
-  halo.addColorStop(1, 'rgba(255, 244, 200, 0)');
-  ctx.fillStyle = halo;
-  ctx.fillRect(MOON.x - 90, MOON.y - 90, 180, 180);
-  ctx.fillStyle = '#fff3c4';
-  ctx.beginPath();
-  ctx.arc(MOON.x, MOON.y, MOON.r, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = 'rgba(210, 190, 130, 0.5)';
-  ctx.beginPath();
-  ctx.arc(MOON.x - 10, MOON.y - 6, 7, 0, Math.PI * 2);
-  ctx.arc(MOON.x + 12, MOON.y + 10, 5, 0, Math.PI * 2);
-  ctx.fill();
   // Stars.
   ctx.fillStyle = 'rgba(255,255,255,0.8)';
   for (let i = 0; i < 40; i += 1) {
@@ -50,7 +34,10 @@ function drawSky(ctx, world) {
     ctx.fillRect(sx, sy, 2, 2);
   }
   ctx.globalAlpha = 1;
-  // Fireflies drift over the lawn.
+}
+
+/** Fireflies drift over the lawn; drawn after it so they stay visible. */
+function drawFireflies(ctx, world) {
   for (let i = 0; i < 14; i += 1) {
     const fx = (i * 173.1 + Math.sin(world.time * 0.4 + i * 2.1) * 26 + 1200) % CANVAS.width;
     const fy = 420 + ((i * 61.7) % 220) + Math.cos(world.time * 0.5 + i) * 14;
@@ -467,6 +454,7 @@ function overlay(ctx, title, lines, accent) {
 export function drawWorld(ctx, world) {
   drawSky(ctx, world);
   drawLawn(ctx);
+  drawFireflies(ctx, world);
   // Ghost preview of the selected plant on the hovered tile.
   if (world.hover && world.screen === SCREEN_PLAY) {
     const { row, col } = world.hover;

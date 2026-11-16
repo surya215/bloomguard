@@ -200,6 +200,10 @@ export function stepWorld(world, dt) {
         plant.timer = def.interval;
         let target = null;
         for (const e of world.enemies) {
+          // Thorns fly right, so a shooter only aims at blight ahead of it.
+          // A chewer stops just right of the stem (touch blocking) and is
+          // shot point-blank; blight already past the plant is the next
+          // shooter's problem — or a breach.
           if (e.row === r && e.x > plant.x && e.x < GRID.x1 + 40 && (!target || e.x < target.x)) target = e;
         }
         if (target) {
@@ -250,7 +254,9 @@ export function stepWorld(world, dt) {
     const slowed = world.time < e.slowUntil;
     const col = Math.floor((e.x - GRID.x0) / GRID.tileW);
     const plant = col >= 0 && col < GRID.cols ? world.plants[e.row][col] : null;
-    const blocked = plant && e.x - e.def.radius < GRID.x0 + (col + 1) * GRID.tileW + 6;
+    // The blight stops when it touches a plant's stem — right next to it, so
+    // the plant being chewed can still shoot its attacker point-blank.
+    const blocked = plant && e.x - e.def.radius < plant.x + 18;
     if (blocked) {
       e.biteTimer -= dt;
       if (e.biteTimer <= 0) {
